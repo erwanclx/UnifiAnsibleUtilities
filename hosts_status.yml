@@ -4,13 +4,11 @@
   vars_files:
   - secrets.yml
   vars:
-    list_all_hosts_file: "list_all_hosts.json"
-    host_id: "{{ udm_id }}"
     headers:
       Content-Type: "application/json"
       Accept: "application/json"
   tasks:
-  - name: Analyse firmware + sauvegarde
+  - name: Hosts requests
     unifi_api:
       endpoint: "hosts"
       method: GET
