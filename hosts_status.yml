@@ -1,0 +1,57 @@
+---
+- name: Unifi module stats
+  hosts: localhost
+  vars_files:
+  - secrets.yml
+  vars:
+    list_all_hosts_file: "list_all_hosts.json"
+    host_id: "{{ udm_id }}"
+    headers:
+      Content-Type: "application/json"
+      Accept: "application/json"
+  tasks:
+  - name: Analyse firmware + sauvegarde
+    unifi_api:
+      endpoint: "hosts"
+      method: GET
+      headers: "{{ headers }}"
+      api_key: "{{ unifi_api_key }}"
+    register: hosts
+
+  - name: Discord JSON message construction
+    when: hosts.result is defined
+    set_fact:
+      discord_message:
+        embeds:
+        - title: "🌐 UniFi Network Status Report"
+          description: "Current firmware status for all UniFi devices"
+          color: 0xff41
+          timestamp: "{{ ansible_date_time.iso8601 }}"
+          fields: >-
+            [ {% for host in hosts.result %}
+              {
+                "name": "⚙️ {{ host.hostname }}",
+                "value": "**Version:** `{{ host.current_version }}`\n{% if host.firmware_update_available %}🟡 **Update Available:** `{{ host.firmware_update_version }}`{% else %}✅ **Status:** Up to date{% endif %}\n──────────────",
+                "inline": false
+              }{{ ',' if not loop.last else '' }}
+            {% endfor %} ]
+          footer:
+            text: "UniFi Network Monitor • Last updated"
+            icon_url: "https://companieslogo.com/img/orig/UI-38398c48.png"
+
+  - name: Send firmware alert to Discord (embed)
+    when: discord_webhook_url is defined and discord_message is defined
+    uri:
+      url: "{{ discord_webhook_url }}"
+      method: POST
+      headers:
+        Content-Type: application/json
+      body: "{{ discord_message | to_json }}"
+      body_format: json
+      status_code: [ 200, 204 ]
+    register: discord_response
+
+  - name: Log Discord response
+    debug:
+      msg: "Discord notification sent successfully"
+    when: discord_response.status in [200, 204]
