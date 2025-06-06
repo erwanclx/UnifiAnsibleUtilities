@@ -16,3 +16,8 @@ unifi_api_key: "your_api_key" # STRING (required)
 udm_id: "12345678abc" # STRING (optional, only use if you want to use host_status.yml with specific ID)
 discord_webhook_url: "https://discord.com/XXXXXXX" # STRING (optional, only use if you want to use Discord notifications)
 ```
+
+## Playbooks 
+- hosts.yml : List your hosts
+- host_status.yml : Get update status of Unifi device by ID
+- hosts_status.yml : Get update status of all Unifi **devices**

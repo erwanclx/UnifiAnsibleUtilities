@@ -4,7 +4,6 @@
   vars_files:
   - secrets.yml
   vars:
-    list_all_hosts_file: "list_all_hosts.json"
     host_id: "{{ udm_id }}"
     headers:
       Content-Type: "application/json"
@@ -21,23 +20,23 @@
   - name: Discord JSON message construction
     when: host.result is defined
     set_fact:
-    discord_message:
-      embeds:
-      - title: "🌐 UniFi Network Status Report"
-        description: "Current firmware status for your UniFi device"
-        color: 0xff41
-        timestamp: "{{ ansible_date_time.iso8601 }}"
-        fields: >-
-          {% for host in hosts.result %}
-            {
-              "name": "⚙️ {{ host.hostname }}",
-              "value": "**Version:** `{{ host.current_version }}`\n{% if host.firmware_update_available %}🟡 **Update Available:** `{{ host.firmware_update_version }}`{% else %}✅ **Status:** Up to date{% endif %}\n──────────────",
-              "inline": false
-            }{{ ',' if not loop.last else '' }}
-          {% endfor %}
-        footer:
-          text: "UniFi Network Monitor • Last updated"
-          icon_url: "https://companieslogo.com/img/orig/UI-38398c48.png"
+      discord_message:
+        embeds:
+        - title: "🌐 UniFi Network Status Report"
+          description: "Current firmware status for your UniFi device"
+          color: 0xff41
+          timestamp: "{{ ansible_date_time.iso8601 }}"
+          fields:
+          - name: "⚙️ {{ host.result.hostname }}"
+            value: "**Version:\n** `{{ host.result.current_version }}\n`{% if host.result.firmware_update_available %}
+
+              🟡 **Update Available:\n** `{{ host.result.firmware_update_version }}`{% else %}
+
+              ✅ **Status:\n** Up to date{% endif %}"
+            inline: false
+          footer:
+            text: "UniFi Network Monitor • Last updated"
+            icon_url: "https://companieslogo.com/img/orig/UI-38398c48.png"
 
   - name: Send firmware alert to Discord (embed)
     when: discord_webhook_url is defined and discord_message is defined
@@ -46,6 +45,12 @@
       method: POST
       headers:
         Content-Type: application/json
-      body: "{{ discord_message }}"
+      body: "{{ discord_message | to_json }}"
       body_format: json
       status_code: [ 200, 204 ]
+    register: discord_response
+
+  - name: Log Discord response
+    debug:
+      msg: "Discord notification sent successfully"
+    when: discord_response.status in [200, 204]
